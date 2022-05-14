@@ -1,5 +1,5 @@
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression
@@ -17,7 +17,7 @@ class PipelineCreator:
     def create(self):
         numeric_pipeline = Pipeline(steps=[
             ('impute', SimpleImputer(strategy=self.numeric_impute_strategy)),
-            ('scale', MinMaxScaler())
+            ('scale', StandardScaler())
         ])
         categorical_pipeline = Pipeline(steps=[
             ('impute', SimpleImputer(strategy=self.categorical_numeric_impute_strategy)),

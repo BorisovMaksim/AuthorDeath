@@ -44,21 +44,21 @@ class AuthorDeath:
 
         df = self.read_csv()
         df = df.astype({'sale_date': "string", 'Price': float, 'Author': "string", 'Art': "string", 'Owner': "string",
-                        'Sign': bool, 'Technique': "string",
-                        'Material': "string", 'Nazi': bool, 'Framed': bool, 'Size': "string", 'square_m': float,
+                        'Sign': int, 'Technique': "string",
+                        'Material': "string", 'Nazi': int, 'Framed': int, 'Size': "string", 'square_m': float,
                         'Currency': "string",
                         'EstimateFrom': float, 'EstimateTo': float, 'ExhibitedNum': int, 'ProvenanceNum': int,
                         'LiteratureNum': int, 'CataloguingLength': float, 'Time': "string", 'City': "string",
                         'Description': "string",
                         'tried_url': "string", 'Image': "string", 'date_of_birth': "string", 'date_of_death': float,
                         'century': int,
-                        'nationality': "string", 'sex': "string", 'style': "string", 'repeat_sale': bool,
+                        'nationality': "string", 'sex': "string", 'style': "string", 'repeat_sale': int,
                         'feature1': "string", 'feature2': "string",
                         'number_of_day': int, 'day_of_week': "string", 'month': int, 'year': int,
                         'deal_time_.utc.': "string",
-                        'normalized_price': float, 'hasFollowers': bool, 'hasAfter': bool, 'mannerOf': bool,
-                        'circleOf': bool,
-                        'isUntitled': bool, 'isNumbered': bool, 'normalized_estimatefrom': float,
+                        'normalized_price': float, 'hasFollowers': int, 'hasAfter': int, 'mannerOf': int,
+                        'circleOf': int,
+                        'isUntitled': int, 'isNumbered': int, 'normalized_estimatefrom': float,
                         'normalized_estimateto': float, 'Auction': "string"})
 
         def try_convert(x):
@@ -83,7 +83,7 @@ class AuthorDeath:
             self.numerical_features = load_data("numerical_features")
             return load_data("X"), load_data("y")
         df = pd.read_pickle(path_cleaned_data)
-        self.numerical_features = df.select_dtypes(include=[int, float]).columns.tolist()
+        self.numerical_features = df.select_dtypes(include=[int, float, bool]).columns.tolist()
         self.categorical_features = df.select_dtypes(include="string").columns.tolist()
         self.target = 'normalized_price'
         y = log_price(df.normalized_price)
@@ -95,28 +95,38 @@ class AuthorDeath:
         pipeline = pipeline_creator.create()
         X = pipeline.fit_transform(X)
 
+
         self.categorical_features = pipeline['preprocessor'].transformers_[1][1]['one-hot'] \
             .get_feature_names_out(self.categorical_features)
         save_data(X, "X")
         save_data(y, "y")
         save_data(self.categorical_features, "categorical_features")
         save_data(self.numerical_features, "numerical_features")
-
         return X, y
 
     def analyze_regression(self, X, y):
+        if self.stage != "analyzing":
+            return 1
         all_cols = np.append(np.array(self.numerical_features), self.categorical_features)
-        X = pd.DataFrame(X, columns=all_cols, index=y.index).drop(cols_to_drop, axis=1)
+        # X = pd.DataFrame(X, columns=all_cols, index=y.index).drop(cols_to_drop, axis=1)
+        X = pd.DataFrame(X, columns=all_cols, index=y.index).drop(self.categorical_features, axis=1).\
+            drop(['normalized_price', 'date_of_death'], axis=1)
         X = sm.add_constant(X)
+        print((X['hasFollowers']).sum())
+        X['square_m'] = np.log(abs(X['square_m']))
+        X['ExhibitedNum'] = np.log(abs(X['ExhibitedNum']))
+        X['ProvenanceNum'] = np.log(abs(X['ProvenanceNum']))
+        X['LiteratureNum'] = np.log(abs(X['LiteratureNum']))
+        X['CataloguingLength'] = np.log(X['CataloguingLength'] + 1)
+
         model = sm.OLS(y, X)
         results = model.fit()
         print(results.summary())
-        print(os.curdir)
         regression = Model(results, X, y)
-        regression.plot_linearity()
-        regression.check_normality_errors()
-        regression.vif_test()
-        regression.het_breuschpagan()
+        regression.check_linearity()
+        # regression.check_normality_errors()
+        # regression.vif_test()
+        # regression.het_breuschpagan()
 
 
 
@@ -127,6 +137,23 @@ class Model:
         self.X = X
         self.y = y
 
+    def check_linearity(self):
+        col = 'square_m'
+        # for col in X.select_dtypes()
+        plt.scatter(self.X[col], self.y)
+        fig = plt.figure(figsize=(12, 8))
+        sm.graphics.plot_regress_exog(self.results, col, fig=fig)
+        plt.show()
+
+        # line_coords = np.arange(self.y.min(), self.y.max())
+        # plt.scatter(predictions, self.y)
+        # plt.ylabel("Labels")
+        # plt.xlabel("Predictions")
+        # plt.plot(line_coords, line_coords, color='darkorange', linestyle='--', linewidth=3)
+        # plt.savefig('/home/maksim/PycharmProjects/pythonProject/plots/plot_linearity.png', bbox_inches='tight')
+        # plt.close()
+
+
     def vif_test(self):
         vif = pd.DataFrame([variance_inflation_factor(self.X.values, i)
                             for i in range(len(self.X.columns))], self.X.columns)
@@ -136,25 +163,21 @@ class Model:
         return pd.DataFrame(results.pvalues[results.pvalues < level]).index.tolist()
 
     def check_normality_errors(self):
+        plt.hist(self.results.predict(self.X))
+        plt.show()
+        plt.close()
         errors = self.results.resid
-        shapiro_pval = stats.shapiro(errors)[1]
-        print(f"Shapiro-Wilk's p-value = {shapiro_pval}")
         plt.hist(errors, bins=40)
         plt.xlabel("Error")
         plt.ylabel("Occurrences")
         plt.savefig('/home/maksim/PycharmProjects/pythonProject/plots/histogram.png', bbox_inches='tight')
+        plt.close()
         stats.probplot(errors, dist="norm", plot=plt)
         plt.savefig('/home/maksim/PycharmProjects/pythonProject/plots//qq-plot.png', bbox_inches='tight')
+        plt.close()
 
 
-    def plot_linearity(self):
-        predictions = self.results.predict(self.X)
-        line_coords = np.arange(self.y.min().min(), self.y.max().max())
-        plt.scatter(predictions, self.y)
-        plt.ylabel("Labels")
-        plt.xlabel("Predictions")
-        plt.plot(line_coords, line_coords, color='darkorange', linestyle='--', linewidth=3)
-        plt.savefig('/home/maksim/PycharmProjects/pythonProject/plots/plot_linearity.png', bbox_inches='tight')
+
 
     def het_breuschpagan(self):
         names = ['Lagrange multiplier statistic', 'p-value',

@@ -14,6 +14,8 @@ def main(stage):
 
 
 if __name__ == '__main__':
-    print("Stages are: \n1.raw_data\n2.processing\n3.train\n")
-    main("train")
+    print("Stages are: \n1.raw_data\n2.processing\n3.analyzing\n")
+    # main("raw_data")
+    # main("processing")
+    main("analyzing")
 

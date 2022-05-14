@@ -1,5 +1,7 @@
 
 cols_to_drop = [
+    'normalized_price',
+    # 'repeat_sale', 'Framed', 'Nazi', 'circleOf', 'isUntitled',
     # 'const', 'square_m', 'ExhibitedNum', 'ProvenanceNum', 'LiteratureNum', 'CataloguingLength',
     'date_of_birth',
     #         'date_of_death',
