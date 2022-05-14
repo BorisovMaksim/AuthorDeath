@@ -122,7 +122,7 @@ class AuthorDeath:
         model = sm.OLS(y, X)
         results = model.fit()
         print(results.summary())
-        regression = Model(results, X, y)
+        regression = Model(results, X, y, save_path='/home/maksim/Data/Author_Death/plots')
         regression.check_linearity()
         # regression.check_normality_errors()
         # regression.vif_test()
@@ -132,21 +132,22 @@ class AuthorDeath:
 
 
 class Model:
-    def __init__(self, results, X, y):
+    def __init__(self, results, X, y, save_path):
         self.results = results
         self.X = X
         self.y = y
+        self.save_path =save_path
 
     def check_linearity(self):
         for col in self.X.select_dtypes(include=[int, float]):
             if col == 'const':
                 continue
             plt.scatter(self.X[col], self.y)
-            plt.savefig(f'/home/maksim/PycharmProjects/pythonProject/plots/linearity_scatter_{col}.png', bbox_inches='tight')
+            plt.savefig(f'{self.save_path}/linearity_scatter_{col}.png', bbox_inches='tight')
             plt.close()
             fig = plt.figure(figsize=(12, 8))
             sm.graphics.plot_regress_exog(self.results, col, fig=fig)
-            plt.savefig(f'/home/maksim/PycharmProjects/pythonProject/plots/residuals_{col}.png', bbox_inches='tight')
+            plt.savefig(f'{self.save_path}/residuals_{col}.png', bbox_inches='tight')
             plt.close()
 
 
