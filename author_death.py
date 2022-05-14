@@ -136,11 +136,11 @@ class Model:
         self.results = results
         self.X = X
         self.y = y
-        self.save_path =save_path
+        self.save_path = save_path
 
     def check_linearity(self):
         for col in self.X.select_dtypes(include=[int, float]):
-            if col == 'const':
+            if col == 'const' or self.X[col].value_counts <= 2:
                 continue
             plt.scatter(self.X[col], self.y)
             plt.savefig(f'{self.save_path}/linearity_scatter_{col}.png', bbox_inches='tight')
