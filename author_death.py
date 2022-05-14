@@ -110,13 +110,13 @@ class AuthorDeath:
         all_cols = np.append(np.array(self.numerical_features), self.categorical_features)
         # X = pd.DataFrame(X, columns=all_cols, index=y.index).drop(cols_to_drop, axis=1)
         X = pd.DataFrame(X, columns=all_cols, index=y.index).drop(self.categorical_features, axis=1).\
-            drop(['normalized_price', 'date_of_death'], axis=1)
+            drop(['normalized_price', 'date_of_death', 'century'], axis=1)
         X = sm.add_constant(X)
         print((X['hasFollowers']).sum())
-        X['square_m'] = np.log(abs(X['square_m']))
-        X['ExhibitedNum'] = np.log(abs(X['ExhibitedNum']))
-        X['ProvenanceNum'] = np.log(abs(X['ProvenanceNum']))
-        X['LiteratureNum'] = np.log(abs(X['LiteratureNum']))
+        X['square_m'] = np.log(X['square_m'] + 1)
+        X['ExhibitedNum'] = np.log(X['ExhibitedNum'] + 1)
+        X['ProvenanceNum'] = np.log(X['ProvenanceNum'] + 1)
+        X['LiteratureNum'] = np.log(X['LiteratureNum'] + 1)
         X['CataloguingLength'] = np.log(X['CataloguingLength'] + 1)
 
         model = sm.OLS(y, X)
@@ -138,20 +138,16 @@ class Model:
         self.y = y
 
     def check_linearity(self):
-        col = 'square_m'
-        # for col in X.select_dtypes()
-        plt.scatter(self.X[col], self.y)
-        fig = plt.figure(figsize=(12, 8))
-        sm.graphics.plot_regress_exog(self.results, col, fig=fig)
-        plt.show()
-
-        # line_coords = np.arange(self.y.min(), self.y.max())
-        # plt.scatter(predictions, self.y)
-        # plt.ylabel("Labels")
-        # plt.xlabel("Predictions")
-        # plt.plot(line_coords, line_coords, color='darkorange', linestyle='--', linewidth=3)
-        # plt.savefig('/home/maksim/PycharmProjects/pythonProject/plots/plot_linearity.png', bbox_inches='tight')
-        # plt.close()
+        for col in self.X.select_dtypes(include=[int, float]):
+            if col == 'const':
+                continue
+            plt.scatter(self.X[col], self.y)
+            plt.savefig(f'/home/maksim/PycharmProjects/pythonProject/plots/linearity_scatter_{col}.png', bbox_inches='tight')
+            plt.close()
+            fig = plt.figure(figsize=(12, 8))
+            sm.graphics.plot_regress_exog(self.results, col, fig=fig)
+            plt.savefig(f'/home/maksim/PycharmProjects/pythonProject/plots/residuals_{col}.png', bbox_inches='tight')
+            plt.close()
 
 
     def vif_test(self):
