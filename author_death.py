@@ -1,7 +1,15 @@
+import os
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
+from scipy import stats
 from pipeline_creator import PipelineCreator
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from myconstants import cols_to_drop
+import statsmodels.stats.api as sms
+from statsmodels.compat import lzip
 
 
 def save_data(df, name):
@@ -94,10 +102,62 @@ class AuthorDeath:
         save_data(self.categorical_features, "categorical_features")
         save_data(self.numerical_features, "numerical_features")
 
-
-
         return X, y
 
     def analyze_regression(self, X, y):
+        all_cols = np.append(np.array(self.numerical_features), self.categorical_features)
+        X = pd.DataFrame(X, columns=all_cols, index=y.index).drop(cols_to_drop, axis=1)
+        X = sm.add_constant(X)
+        model = sm.OLS(y, X)
+        results = model.fit()
+        print(results.summary())
+        print(os.curdir)
+        regression = Model(results, X, y)
+        regression.plot_linearity()
+        regression.check_normality_errors()
+        regression.vif_test()
+        regression.het_breuschpagan()
 
-        pass
+
+
+
+class Model:
+    def __init__(self, results, X, y):
+        self.results = results
+        self.X = X
+        self.y = y
+
+    def vif_test(self):
+        vif = pd.DataFrame([variance_inflation_factor(self.X.values, i)
+                            for i in range(len(self.X.columns))], self.X.columns)
+        print(vif[vif.values > 5] if not vif[vif.values > 5].empty else "All vif's < 5")
+
+    def get_significant_features(self, results, level):
+        return pd.DataFrame(results.pvalues[results.pvalues < level]).index.tolist()
+
+    def check_normality_errors(self):
+        errors = self.results.resid
+        shapiro_pval = stats.shapiro(errors)[1]
+        print(f"Shapiro-Wilk's p-value = {shapiro_pval}")
+        plt.hist(errors, bins=40)
+        plt.xlabel("Error")
+        plt.ylabel("Occurrences")
+        plt.savefig('/home/maksim/PycharmProjects/pythonProject/plots/histogram.png', bbox_inches='tight')
+        stats.probplot(errors, dist="norm", plot=plt)
+        plt.savefig('/home/maksim/PycharmProjects/pythonProject/plots//qq-plot.png', bbox_inches='tight')
+
+
+    def plot_linearity(self):
+        predictions = self.results.predict(self.X)
+        line_coords = np.arange(self.y.min().min(), self.y.max().max())
+        plt.scatter(predictions, self.y)
+        plt.ylabel("Labels")
+        plt.xlabel("Predictions")
+        plt.plot(line_coords, line_coords, color='darkorange', linestyle='--', linewidth=3)
+        plt.savefig('/home/maksim/PycharmProjects/pythonProject/plots/plot_linearity.png', bbox_inches='tight')
+
+    def het_breuschpagan(self):
+        names = ['Lagrange multiplier statistic', 'p-value',
+                 'f-value', 'f p-value']
+        test = sms.het_breuschpagan(self.results.resid, self.results.model.exog)
+        print(lzip(names, test)[1][1])

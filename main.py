@@ -8,9 +8,6 @@ def main(stage):
     model.process_raw_data()
     X, y = model.process_data()
     model.analyze_regression(X, y)
-    print(np.shape(X))
-    print(np.shape(model.categorical_features))
-    print(np.shape(model.numerical_features))
 
     return 1
 
